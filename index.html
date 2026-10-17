@@ -949,60 +949,68 @@
     }
     
 
-    /* Authentication Engine */
-
-    async function handleLogin(e) {
-      e.preventDefault();
+        /* Authentication Engine */
     
-      const email = document.getElementById('login-email').value.trim();
-      const password = document.getElementById('login-password').value.trim();
+    async function handleLogin(e) {
+      if (e) e.preventDefault();
+    
+      const email = document.getElementById('login-email')?.value?.trim();
+      const password = document.getElementById('login-password')?.value?.trim();
     
       if (!email || !password) {
         showToast('Please enter both email and password.', 'error');
         return;
       }
     
-      // ----------------------------------------------------
-      // CASE A: Supabase Auth (Online Mode)
-      // ----------------------------------------------------
+      // 1. SUPABASE AUTH LOGIN
       if (supabaseClient) {
         const { data, error } = await supabaseClient.auth.signInWithPassword({
           email: email,
           password: password,
         });
     
-        // ⛔ IF PASSWORD OR EMAIL IS WRONG: STOP IMMEDIATELY
         if (error) {
-          console.error('Supabase Auth error:', error.message);
+          console.error('Supabase Auth failed:', error.message);
           showToast('Invalid email or password.', 'error');
-          return; // DO NOT CONTINUING TO LOCAL FALLBACK
+          return; // Stops execution if password is wrong
         }
     
         if (data?.user) {
-          // Password was CORRECT! Load profile
-          const foundProfile = appState.profiles.find(p => p.email === email) || {
-            id: data.user.id,
-            name: data.user.user_metadata?.full_name || email.split('@')[0],
-            email: email,
-            role: data.user.user_metadata?.role || 'teacher'
-          };
+          // Find matching profile in local state or fallback to metadata
+          let userProfile = appState.profiles?.find(p => p.email === email);
+          
+          if (!userProfile) {
+            userProfile = {
+              id: data.user.id,
+              name: data.user.user_metadata?.full_name || email.split('@')[0],
+              email: email,
+              role: data.user.user_metadata?.role || (email.includes('admin') ? 'admin' : 'teacher')
+            };
+          }
     
-          appState.user = foundProfile;
+          // Update state
+          appState.user = userProfile;
           saveState();
+    
           showToast('Authenticated via Supabase Auth!', 'success');
-          checkAuthSession();
+    
+          // Direct page navigation based on role
+          if (userProfile.role === 'admin') {
+            if (typeof navigateTo === 'function') navigateTo('view-admin-dashboard');
+          } else {
+            if (typeof navigateTo === 'function') navigateTo('view-teacher-dashboard');
+          }
+    
+          if (typeof checkAuthSession === 'function') checkAuthSession();
           return;
         }
       }
     
-      // ----------------------------------------------------
-      // CASE B: Offline / Local Fallback Mode
-      // ----------------------------------------------------
-      // If Supabase is NOT connected, validate local demo credentials
-      const localUser = appState.profiles.find(p => p.email === email);
+      // 2. LOCAL / DEMO FALLBACK MODE (If Supabase client is not connected)
+      const localUser = appState.profiles?.find(p => p.email === email);
     
       if (localUser) {
-        // Basic password validation check for demo mode (e.g. admin123 or password)
+        // Validate password if local stored password exists
         if (localUser.password && localUser.password !== password) {
           showToast('Invalid password for local user.', 'error');
           return;
@@ -1010,13 +1018,21 @@
     
         appState.user = localUser;
         saveState();
-        showToast('Logged in via Local Offline Mode', 'info');
-        checkAuthSession();
+    
+        showToast('Logged in via Local Mode', 'info');
+    
+        // Direct page navigation based on role
+        if (localUser.role === 'admin') {
+          if (typeof navigateTo === 'function') navigateTo('view-admin-dashboard');
+        } else {
+          if (typeof navigateTo === 'function') navigateTo('view-teacher-dashboard');
+        }
+    
+        if (typeof checkAuthSession === 'function') checkAuthSession();
       } else {
         showToast('User profile not found.', 'error');
       }
     }
-
       // Local Fallback Verification
       const profile = appState.profiles.find(p => p.email.toLowerCase() === email.toLowerCase());
       if (profile) {
