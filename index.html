@@ -947,56 +947,73 @@
     function generateId(prefix) {
       return prefix + '-' + String(Math.floor(100 + Math.random() * 900));
     }
+    
 
     /* Authentication Engine */
+
     async function handleLogin(e) {
       e.preventDefault();
+    
       const email = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value.trim();
     
-      // 1. Check Supabase Client Auth first if online
+      if (!email || !password) {
+        showToast('Please enter both email and password.', 'error');
+        return;
+      }
+    
+      // ----------------------------------------------------
+      // CASE A: Supabase Auth (Online Mode)
+      // ----------------------------------------------------
       if (supabaseClient) {
-        try {
-          const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+          email: email,
+          password: password,
+        });
     
-          if (error) {
-            // Stop login immediately if password or email is invalid
-            showToast(error.message || 'Invalid email or password', 'error');
-            return;
-          }
+        // ⛔ IF PASSWORD OR EMAIL IS WRONG: STOP IMMEDIATELY
+        if (error) {
+          console.error('Supabase Auth error:', error.message);
+          showToast('Invalid email or password.', 'error');
+          return; // DO NOT CONTINUING TO LOCAL FALLBACK
+        }
     
-          if (data && data.user) {
-            // Retrieve connected profile
-            const foundProfile = appState.profiles.find(p => p.email === email) || {
-              id: data.user.id,
-              name: data.user.user_metadata?.full_name || email.split('@')[0],
-              email: email,
-              role: data.user.user_metadata?.role || 'teacher'
-            };
-            appState.user = foundProfile;
-            saveState();
-            showToast('Authenticated via Supabase Auth!', 'success');
-            checkAuthSession();
-            return;
-          }
-        } catch (err) {
-          console.error('Authentication error:', err);
-          showToast('An error occurred during authentication.', 'error');
+        if (data?.user) {
+          // Password was CORRECT! Load profile
+          const foundProfile = appState.profiles.find(p => p.email === email) || {
+            id: data.user.id,
+            name: data.user.user_metadata?.full_name || email.split('@')[0],
+            email: email,
+            role: data.user.user_metadata?.role || 'teacher'
+          };
+    
+          appState.user = foundProfile;
+          saveState();
+          showToast('Authenticated via Supabase Auth!', 'success');
+          checkAuthSession();
           return;
         }
       }
     
-      // 2. Offline / Local Fallback Mode
-      // If you only want offline login when supabaseClient is NOT configured/connected:
+      // ----------------------------------------------------
+      // CASE B: Offline / Local Fallback Mode
+      // ----------------------------------------------------
+      // If Supabase is NOT connected, validate local demo credentials
       const localUser = appState.profiles.find(p => p.email === email);
+    
       if (localUser) {
-        // Optional: Add password check for local mock accounts if desired
+        // Basic password validation check for demo mode (e.g. admin123 or password)
+        if (localUser.password && localUser.password !== password) {
+          showToast('Invalid password for local user.', 'error');
+          return;
+        }
+    
         appState.user = localUser;
         saveState();
         showToast('Logged in via Local Offline Mode', 'info');
         checkAuthSession();
       } else {
-        showToast('User not found in local system.', 'error');
+        showToast('User profile not found.', 'error');
       }
     }
 
