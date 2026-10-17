@@ -953,12 +953,19 @@
       e.preventDefault();
       const email = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value.trim();
-
-      // Check Supabase Client Auth first if online
+    
+      // 1. Check Supabase Client Auth first if online
       if (supabaseClient) {
         try {
           const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-          if (!error && data.user) {
+    
+          if (error) {
+            // Stop login immediately if password or email is invalid
+            showToast(error.message || 'Invalid email or password', 'error');
+            return;
+          }
+    
+          if (data && data.user) {
             // Retrieve connected profile
             const foundProfile = appState.profiles.find(p => p.email === email) || {
               id: data.user.id,
@@ -973,9 +980,25 @@
             return;
           }
         } catch (err) {
-          console.warn('Supabase Auth failed, trying Local Fallback mode:', err);
+          console.error('Authentication error:', err);
+          showToast('An error occurred during authentication.', 'error');
+          return;
         }
       }
+    
+      // 2. Offline / Local Fallback Mode
+      // If you only want offline login when supabaseClient is NOT configured/connected:
+      const localUser = appState.profiles.find(p => p.email === email);
+      if (localUser) {
+        // Optional: Add password check for local mock accounts if desired
+        appState.user = localUser;
+        saveState();
+        showToast('Logged in via Local Offline Mode', 'info');
+        checkAuthSession();
+      } else {
+        showToast('User not found in local system.', 'error');
+      }
+    }
 
       // Local Fallback Verification
       const profile = appState.profiles.find(p => p.email.toLowerCase() === email.toLowerCase());
