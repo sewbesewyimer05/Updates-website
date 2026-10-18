@@ -954,97 +954,117 @@
     async function handleLogin(e) {
       if (e) e.preventDefault();
     
-      const email = document.getElementById('login-email')?.value?.trim();
-      const password = document.getElementById('login-password')?.value?.trim();
+      // 1. Get input values safely
+      const emailInput = document.getElementById('login-email') || document.querySelector('input[type="email"]');
+      const passwordInput = document.getElementById('login-password') || document.querySelector('input[type="password"]');
+    
+      const email = emailInput ? emailInput.value.trim() : '';
+      const password = passwordInput ? passwordInput.value.trim() : '';
     
       if (!email || !password) {
-        showToast('Please enter both email and password.', 'error');
+        if (typeof showToast === 'function') showToast('Please enter both email and password.', 'error');
+        else alert('Please enter both email and password.');
         return;
       }
     
-      // 1. SUPABASE AUTH LOGIN
-      if (supabaseClient) {
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
-          email: email,
-          password: password,
-        });
+      // 2. SUPABASE AUTH LOGIN
+      if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+        try {
+          const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password,
+          });
     
-        if (error) {
-          console.error('Supabase Auth failed:', error.message);
-          showToast('Invalid email or password.', 'error');
-          return; // Stops execution if password is wrong
+          if (error) {
+            console.error('Supabase Auth Error:', error.message);
+            if (typeof showToast === 'function') showToast(error.message, 'error');
+            else alert(error.message);
+            return; // Stops here if password is wrong
+          }
+    
+          if (data?.user) {
+            // Fetch role directly from public.profiles table
+            let userRole = 'teacher';
+            let fullProfile = null;
+    
+            try {
+              const { data: dbProfile } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('id', data.user.id)
+                .maybeSingle();
+    
+              if (dbProfile) {
+                fullProfile = dbProfile;
+                userRole = dbProfile.role || userRole;
+              }
+            } catch (dbErr) {
+              console.warn('Could not fetch public profile from Supabase:', dbErr);
+            }
+    
+            // Fallback to email/metadata check if DB profile missing
+            if (!fullProfile) {
+              userRole = data.user.user_metadata?.role || (email.includes('admin') ? 'admin' : 'teacher');
+              fullProfile = {
+                id: data.user.id,
+                name: data.user.user_metadata?.full_name || email.split('@')[0],
+                email: email,
+                role: userRole
+              };
+            }
+    
+            // Ensure user is added to appState
+            if (typeof appState !== 'undefined') {
+              appState.user = fullProfile;
+              if (!appState.profiles) appState.profiles = [];
+              if (!appState.profiles.some(p => p.email === email)) {
+                appState.profiles.push(fullProfile);
+              }
+            }
+    
+            if (typeof saveState === 'function') saveState();
+            if (typeof showToast === 'function') showToast('Logged in successfully!', 'success');
+    
+            // Route directly based on role
+            const targetView = (userRole === 'admin') ? 'view-admin-dashboard' : 'view-teacher-dashboard';
+    
+            if (typeof navigateTo === 'function') {
+              navigateTo(targetView);
+            } else if (typeof renderApp === 'function') {
+              renderApp();
+            } else {
+              window.location.reload();
+            }
+    
+            if (typeof checkAuthSession === 'function') checkAuthSession();
+            return;
+          }
+        } catch (err) {
+          console.error('Login process crashed:', err);
+          alert('Login error: ' + err.message);
+          return;
         }
+      }
     
-        if (data?.user) {
-          // Find matching profile in local state or fallback to metadata
-          let userProfile = appState.profiles?.find(p => p.email === email);
+      // 3. MOCK LOCAL FALLBACK (Only runs if supabaseClient is undefined)
+      if (typeof appState !== 'undefined' && appState.profiles) {
+        const localUser = appState.profiles.find(p => p.email === email);
+        if (localUser) {
+          if (localUser.password && localUser.password !== password) {
+            if (typeof showToast === 'function') showToast('Invalid password', 'error');
+            return;
+          }
+          appState.user = localUser;
+          if (typeof saveState === 'function') saveState();
           
-          if (!userProfile) {
-            userProfile = {
-              id: data.user.id,
-              name: data.user.user_metadata?.full_name || email.split('@')[0],
-              email: email,
-              role: data.user.user_metadata?.role || (email.includes('admin') ? 'admin' : 'teacher')
-            };
-          }
-    
-          // Update state
-          appState.user = userProfile;
-          saveState();
-    
-          showToast('Authenticated via Supabase Auth!', 'success');
-    
-          // Direct page navigation based on role
-          if (userProfile.role === 'admin') {
-            if (typeof navigateTo === 'function') navigateTo('view-admin-dashboard');
-          } else {
-            if (typeof navigateTo === 'function') navigateTo('view-teacher-dashboard');
-          }
-    
+          const targetView = (localUser.role === 'admin') ? 'view-admin-dashboard' : 'view-teacher-dashboard';
+          if (typeof navigateTo === 'function') navigateTo(targetView);
           if (typeof checkAuthSession === 'function') checkAuthSession();
-          return;
-        }
-      }
-    
-      // 2. LOCAL / DEMO FALLBACK MODE (If Supabase client is not connected)
-      const localUser = appState.profiles?.find(p => p.email === email);
-    
-      if (localUser) {
-        // Validate password if local stored password exists
-        if (localUser.password && localUser.password !== password) {
-          showToast('Invalid password for local user.', 'error');
-          return;
-        }
-    
-        appState.user = localUser;
-        saveState();
-    
-        showToast('Logged in via Local Mode', 'info');
-    
-        // Direct page navigation based on role
-        if (localUser.role === 'admin') {
-          if (typeof navigateTo === 'function') navigateTo('view-admin-dashboard');
         } else {
-          if (typeof navigateTo === 'function') navigateTo('view-teacher-dashboard');
+          alert('User profile not found in local state.');
         }
-    
-        if (typeof checkAuthSession === 'function') checkAuthSession();
-      } else {
-        showToast('User profile not found.', 'error');
       }
     }
-      // Local Fallback Verification
-      const profile = appState.profiles.find(p => p.email.toLowerCase() === email.toLowerCase());
-      if (profile) {
-        appState.user = profile;
-        saveState();
-        showToast(`Welcome back, ${profile.name}!`, 'success');
-        checkAuthSession();
-      } else {
-        showToast('Invalid credentials provided.', 'error');
-      }
-    }
-
     function presetLogin(email, password) {
       document.getElementById('login-email').value = email;
       document.getElementById('login-password').value = password;
