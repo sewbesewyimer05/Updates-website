@@ -1289,47 +1289,87 @@
 
     async function handleSaveFaculty(e) {
       e.preventDefault();
+    
       const id = document.getElementById('faculty-id').value;
       const name = document.getElementById('faculty-name').value;
       const dept = document.getElementById('faculty-dept').value;
       const email = document.getElementById('faculty-email').value;
       const password = document.getElementById('faculty-password').value;
-
+    
       if (id) {
+        // --------------------------------------------------
+        // UPDATE EXISTING FACULTY
+        // --------------------------------------------------
         const fac = appState.profiles.find(p => p.id === id);
         if (fac) {
           fac.name = name;
           fac.dept = dept;
           fac.email = email;
         }
-      } else {
-        // Create live Supabase Auth profile if connected
-        if (supabaseClient) {
+    
+        // Update in Supabase profiles table if connected
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
           try {
-            await supabaseClient.auth.signUp({
-              email: email,
-              password: password,
-              options: { data: { full_name: name, role: 'teacher', dept: dept } }
-            });
-          } catch(err) {
-            console.warn('Supabase auth signup notice:', err);
+            await supabaseClient
+              .from('profiles')
+              .update({ full_name: name, department: dept, email: email })
+              .eq('id', id);
+          } catch (err) {
+            console.warn('Could not update profile in Supabase table:', err);
           }
         }
-
+    
+      } else {
+        // --------------------------------------------------
+        // CREATE NEW FACULTY
+        // --------------------------------------------------
+        const newId = (typeof generateId === 'function') ? generateId('TCH') : 'TCH-' + Date.now();
+        
+        // 1. Insert directly into Supabase 'profiles' database table
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+          try {
+            const { error } = await supabaseClient
+              .from('profiles')
+              .insert([
+                {
+                  id: newId,
+                  full_name: name,
+                  email: email,
+                  role: 'teacher',
+                  department: dept
+                }
+              ]);
+    
+            if (error) {
+              console.warn('Database insert notice:', error.message);
+            }
+          } catch (err) {
+            console.warn('Supabase DB profile insert failed:', err);
+          }
+        }
+    
+        // 2. Add to local app state so it renders immediately in the table
         const newFaculty = {
-          id: generateId('TCH'),
-          name,
-          email,
+          id: newId,
+          name: name,
+          email: email,
+          password: password || 'teacher123',
           role: 'teacher',
-          dept
+          dept: dept
         };
+    
+        if (!appState.profiles) appState.profiles = [];
         appState.profiles.push(newFaculty);
       }
-
-      saveState();
-      closeFacultyModal();
-      renderFacultyList();
-      showToast('Faculty profile saved successfully!', 'success');
+    
+      // Save local state and refresh UI
+      if (typeof saveState === 'function') saveState();
+      if (typeof closeFacultyModal === 'function') closeFacultyModal();
+      if (typeof renderFacultyList === 'function') renderFacultyList();
+      
+      if (typeof showToast === 'function') {
+        showToast('Faculty profile saved successfully!', 'success');
+      }
     }
 
     function resetFacultyPassword(facId) {
