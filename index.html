@@ -607,8 +607,8 @@
                                             <thead>
                                                 <tr class="bg-slate-100 text-xs font-bold text-slate-700 uppercase border-b border-slate-300">
                                                     <th class="py-3 px-4 border-r border-slate-300">የትምህርት አይነት</th>
-                                                    <th class="py-3 px-4 border-r border-slate-300">ክፍል</th>
-                                                    <th class="py-3 px-4 border-r border-slate-300">መምህር</th>
+                                                    <!-- <th class="py-3 px-4 border-r border-slate-300">ክፍል</th>
+                                                    <th class="py-3 px-4 border-r border-slate-300">መምህር</th> -->
                                                     <th class="py-3 px-4 border-r border-slate-300 text-center">ውጤት (100)</th>
                                                     <th class="py-3 px-4 text-center">Grade</th>
                                                 </tr>
@@ -983,17 +983,7 @@
                 renderTeacherMarkLists();
             }
         }
-    
-        // function switchLoginRole(role) {
-        //     document.getElementById('selectedRole').value = role;
-        //     if (role === 'admin') {
-        //         document.getElementById('loginUsername').value = '';
-        //         document.getElementById('loginPassword').value = '';
-        //     } else {
-        //         document.getElementById('loginUsername').value = '';
-        //         document.getElementById('loginPassword').value = '';
-        //     }
-        // }
+
         function switchLoginRole(role) {
             document.getElementById('selectedRole').value = role;
             const adminBtn = document.getElementById('loginRoleAdmin');
@@ -1043,15 +1033,6 @@
             checkAuthView();
         }
     
-        // function switchAdminTab(tabName) {
-        //     document.querySelectorAll('#adminDashboard .tab-content').forEach(el => el.classList.remove('active'));
-        //     ['Overview', 'Teachers', 'Classes', 'Subjects', 'Reports', 'Card'].forEach(t => {
-        //         const btn = document.getElementById(`adminTabBtn${t}`);
-        //         if (btn) btn.className = "px-3.5 py-2 text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-50 transition";
-        //     });
-        //     document.getElementById(`adminTabBtn${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).className = "px-3.5 py-2 text-sm font-semibold rounded-lg bg-indigo-50 text-indigo-700 transition";
-        //     document.getElementById(`adminTab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).classList.add('active');
-        // }
 
         function switchAdminTab(tabName) {
             // Hide all tabs
@@ -1806,13 +1787,10 @@
                 const scoreObj = calculateStudentScore(studentId, ml);
                 totalPercentageSum += scoreObj.mark;
                 const teacher = appState.teachers.find(t => t.id === ml.teacher_id);
-    // --------------------------------------------------
-    //     -------------------------------------
+
                 return `
                     <tr class="border-b border-slate-200">
                         <td class="py-3 px-4 border-r border-slate-200 font-semibold text-slate-800">${ml.subject_name}</td>
-                        <td class="py-3 px-4 border-r border-slate-200 font-semibold text-slate-600">${targetClass ? targetClass.name : '-'}</td>
-                        <td class="py-3 px-4 border-r border-slate-200 font-semibold text-slate-600">${teacher ? teacher.name : ml.teacher_name}</td>
                         <td class="py-3 px-4 border-r border-slate-200 font-semibold text-center font-bold text-indigo-700">${scoreObj.mark} / 100</td>
                         <td class="py-3 px-4 text-center font-black font-semibold text-slate-800">${scoreObj.customGrade}</td>
                     </tr>
@@ -1839,69 +1817,7 @@
             container.classList.remove('hidden');
             emptyState.classList.add('hidden');
         }
-        
-        // function generateStudentReportCard() {
-        //     const classId = document.getElementById('reportCardClassSelect',).value;
-        //     const studentId = document.getElementById('reportCardStudentSelect').value;
-        //     const container = document.getElementById('reportCardContainer');
-        //     const emptyState = document.getElementById('reportCardEmpty');
     
-        //     if (!classId || !studentId) {
-        //         container.classList.add('hidden');
-        //         emptyState.classList.remove('hidden');
-        //         return;
-        //     }
-    
-        //     const targetStudent = appState.students.find(s => s.id === studentId);
-        //     const targetClass = appState.classes.find(c => c.id === classId);
-        //     const classMarkLists = appState.markLists.filter(ml => ml.class_id === classId);
-    
-        //     document.getElementById('rcIssueDate').textContent = new Date().toLocaleDateString();
-        //     document.getElementById('rcStudentName').textContent = targetStudent.name;
-        //     document.getElementById('rcClassName').textContent = targetClass.name;
-        //     document.getElementById('rcTotalSubjects').textContent = classMarkLists.length;
-    
-        //     let totalMarksSum = 0;
-        //     const tbody = document.getElementById('rcMarksTableBody');
-        //     tbody.innerHTML = '';
-    
-        //     classMarkLists.forEach(ml => {
-        //         const scoreObj = calculateStudentScore(studentId, ml);
-        //         totalMarksSum += scoreObj.mark;
-        //         tbody.innerHTML += `
-        //             <tr class="border-b border-slate-200">
-        //                 <td class="py-3 px-4 border-r border-slate-200 font-semibold">${ml.subject_name}</td>
-        //                 <td class="py-3 px-4 border-r border-slate-200">${targetClass.name}</td>
-        //                 <td class="py-3 px-4 border-r border-slate-200">${ml.teacher_name}</td>
-        //                 <td class="py-3 px-4 border-r border-slate-200 text-center font-bold text-indigo-600">${scoreObj.mark}</td>
-        //                 <td class="py-3 px-4 text-center font-bold">${scoreObj.customGrade}</td>
-        //             </tr>
-        //         `;
-        //     });
-    
-        //     const avg = classMarkLists.length > 0 ? (totalMarksSum / classMarkLists.length).toFixed(1) : 0;
-        //     document.getElementById('rcOverallAverage').textContent = overallAvg.toFixed(1) + '%';
-    
-        //     const studentsInClass = appState.students.filter(s => s.class_id === classId);
-        //     const studentTotals = studentsInClass.map(stu => {
-        //         let stuTotal = 0;
-        //         classMarkLists.forEach(ml => {
-        //             const sScore = calculateStudentScore(stu.id, ml);
-        //             stuTotal += sScore.mark;
-        //         });
-        //         return { id: stu.id, total: stuTotal };
-        //     });
-    
-        //     studentTotals.sort((a, b) => b.total - a.total);
-        //     const rankIndex = studentTotals.findIndex(s => s.id === studentId);
-        //     const classRank = rankIndex !== -1 ? rankIndex + 1 : 1;
-    
-        //     document.getElementById('rcClassRank').textContent = `#${rank} of ${classStudents.length}`;
-    
-        //     container.classList.remove('hidden');
-        //     emptyState.classList.add('hidden');
-        // }
-        
         function downloadStudentReportPDF() {
             const element = document.getElementById('printableReportCard');
             // Configuration optimized for both mobile and high-resolution PC displays
