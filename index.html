@@ -1840,7 +1840,6 @@
         
         function downloadStudentReportPDF() {
             const element = document.getElementById('printableReportCard');
-            
             // Configuration optimized for both mobile and high-resolution PC displays
             const opt = {
                 margin:       [0.4, 0.4, 0.4, 0.4],
@@ -1854,7 +1853,7 @@
                     scrollY: 0,
                     windowWidth: document.documentElement.offsetWidth
                 },
-                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' },
+                jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' },
                 pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
             };
         
@@ -1863,15 +1862,6 @@
 
         function downloadClassSummaryPDF() {
                     const element = document.getElementById('printableClassSummaryContainer');
-                    // if (!element) return;
-        
-                    // // Find any scrollable table wrappers inside the container and temporarily remove overflow-x-auto
-                    // const scrollContainers = element.querySelectorAll('.overflow-x-auto');
-                    // scrollContainers.forEach(container => {
-                    //     container.classList.remove('overflow-x-auto');
-                    //     container.style.overflow = 'visible';
-                    // });
-        
                     const opt = {
                         margin:       [0.4, 0.4, 0.4, 0.4],
                         filename:     `Class_Performance_Report.pdf`,
@@ -1889,17 +1879,8 @@
                         jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' },
                         pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
                     };
-        
                     html2pdf().set(opt).from(element).save()
-                    //     .then(() => {
-                    //     // Restore the scrollable classes back after download triggers
-                    //     scrollContainers.forEach(container => {
-                    //         container.classList.add('overflow-x-auto');
-                    //         container.style.overflow = '';
-                    //     });
-                    // });
                 }
-        
         window.onload = loadAppData;
         
     </script>
