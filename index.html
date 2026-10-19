@@ -1816,7 +1816,7 @@
             });
     
             const avg = classMarkLists.length > 0 ? (totalMarksSum / classMarkLists.length).toFixed(1) : 0;
-            document.getElementById('rcOverallAverage').textContent = `${avg} / 100 (${getLetterGrade(avg)})`;
+            document.getElementById('rcOverallAverage').textContent = overallAvg.toFixed(1) + '%';
     
             const studentsInClass = appState.students.filter(s => s.class_id === classId);
             const studentTotals = studentsInClass.map(stu => {
@@ -1832,7 +1832,7 @@
             const rankIndex = studentTotals.findIndex(s => s.id === studentId);
             const classRank = rankIndex !== -1 ? rankIndex + 1 : 1;
     
-            document.getElementById('rcClassRank').textContent = `#${classRank}`;
+            document.getElementById('rcClassRank').textContent = `#${rank} of ${classStudents.length}`;
     
             container.classList.remove('hidden');
             emptyState.classList.add('hidden');
